@@ -8,6 +8,29 @@ from test_engine import engine, NOW, ROOT
 
 
 class CLITests(unittest.TestCase):
+    def test_save_artifacts_builds_research_archive_from_readonly_snapshot(self):
+        import cli,hashlib,sqlite3
+        from types import SimpleNamespace
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as tmp:
+            db=Path(tmp)/'paper.db';ledger=engine().Ledger(db);ledger.close()
+            before=db.read_bytes();report=cli.load_report(db);calls=[]
+            def archive(readonly,output,**kwargs):
+                calls.append(output)
+                self.assertTrue(readonly.db.in_transaction)
+                with self.assertRaises(sqlite3.OperationalError):
+                    readonly.db.execute('CREATE TABLE must_not_write (value TEXT)')
+                folder=output/'research';folder.mkdir(exist_ok=True)
+                body=b'{"schema_version":1,"streams":{}}'
+                (folder/'index.json').write_bytes(body)
+                return [{'path':'research/index.json','bytes':len(body),'sha256':hashlib.sha256(body).hexdigest()}]
+            with patch.dict('sys.modules',{'research':SimpleNamespace(build_research_archive=archive)}):
+                cli.save_artifacts(report,Path(tmp)/'reports',db_path=db)
+            self.assertEqual(len(calls),1)
+            manifest=json.loads((Path(tmp)/'reports/site-manifest.json').read_text())
+            self.assertIn('research/index.json',[row['path'] for row in manifest])
+            self.assertEqual(db.read_bytes(),before)
+
     def test_cli_settlement_only_exposes_sanitized_site_without_entry_selection(self):
         with tempfile.TemporaryDirectory() as tmp:
             db=Path(tmp)/'paper.db'

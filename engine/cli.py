@@ -33,7 +33,7 @@ def load_report(path):
         ledger.close()
 
 
-def save_artifacts(report, destination):
+def save_artifacts(report, destination, db_path=None):
     from engine import dumps
     from reporting import report_text
     from dashboard import build_dashboard
@@ -61,7 +61,21 @@ def save_artifacts(report, destination):
         temp.replace(destination/name)
     from site_builder import build_site
     manifest=build_site(report['public_export'],destination.parent/'site')
-    (destination/'site-manifest.json').write_text(dumps(manifest),encoding='utf-8')
+    if db_path is not None:
+        from engine import Ledger
+        from research import build_research_archive
+        ledger=Ledger.__new__(Ledger)
+        ledger.path=Path(db_path)
+        ledger.db=sqlite3.connect(ledger.path.resolve().as_uri()+'?mode=ro',uri=True)
+        ledger.db.row_factory=sqlite3.Row
+        try:
+            ledger.db.execute('BEGIN')
+            manifest.extend(build_research_archive(ledger,destination.parent/'site'))
+        finally:
+            ledger.close()
+    temporary=destination/'.site-manifest.json.new'
+    temporary.write_text(dumps(manifest),encoding='utf-8')
+    temporary.replace(destination/'site-manifest.json')
 
 
 def main(argv=None):
@@ -84,7 +98,7 @@ def main(argv=None):
         if args.command=='scan':
             scan(args.db,no_news=args.no_news,dry_run=args.dry_run,settlement_only=args.settlement_only)
         report = load_report(args.db)
-        save_artifacts(report,args.reports)
+        save_artifacts(report,args.reports,db_path=args.db)
         print(daily_text(report) if args.full else report_text(report))
         return 0
     except Exception as exc:

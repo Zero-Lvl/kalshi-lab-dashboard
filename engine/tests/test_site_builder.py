@@ -23,3 +23,12 @@ class SiteBuildTests(unittest.TestCase):
             self.assertTrue(all(row['sha256'] and row['bytes']>=0 for row in manifest))
             with self.assertRaises(ValueError):build_site(dict(data,raw_snapshots=[]),output,assets)
             with self.assertRaises(ValueError):build_site(dict(data,positions=[{'signal_json':'private'}]),output,assets)
+    def test_rebuild_preserves_safe_research_directory_and_five_base_rows(self):
+        from site_builder import build_site, PUBLIC_FILES
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp);research=root/'research';research.mkdir()
+            page=research/'news-000001.json';page.write_text('{}')
+            manifest=build_site({'schema_version':2},root)
+            self.assertEqual(len(manifest),5)
+            self.assertEqual({r['path'] for r in manifest},set(PUBLIC_FILES))
+            self.assertEqual(page.read_text(),'{}')

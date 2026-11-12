@@ -47,7 +47,7 @@ The first scan uses actual public HTTPS sources and creates your own local `data
 
 Original forecasts, entry inputs and decisions are preserved. Scoring compares pre-outcome estimates with market-odds baselines and official outcomes; correlated buckets are not independent events. Conservative adaptation uses separate 30-event training and 20-event holdout cohorts. Sustained losses in both suspend future strategy/category entries; it does not automatically increase stakes, resume a failed strategy or retune all models.
 
-The public dashboard includes all paper positions, results, costs, evidence links, portfolio curves, calendar totals, filters and strategy diagnostics. The detailed decision/input/news log remains in the local database; the current dashboard is not a complete audit-log browser. No demonstrated profitability is claimed.
+The public dashboard includes all paper positions, results, costs, evidence links, portfolio curves, calendar totals, filters and strategy diagnostics. Its **Research** section includes the complete recorded history of decisions, forecasts, news observations, topical news matches and scans in stable 100-record pages. Newest records load first; Older/Newer reaches the full history. Search and action filters apply to the displayed page, with page-specific CSV export. Original forecasts remain frozen; official outcomes are annotations, and a forecast is not a trade. Only allowlisted research fields/headlines/source links are published—not credentials, raw payloads, full articles, machine paths or operational traces. Records from before detailed decision logging may lack a decision entry; no historical rows are invented. No demonstrated profitability is claimed.
 
 ## Operator automation
 

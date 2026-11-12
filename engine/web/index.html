@@ -14,7 +14,7 @@
   <a class="skip-link" href="#main">Skip to dashboard</a>
   <header class="site-header">
     <div class="brand"><span class="brand-mark" aria-hidden="true">k<span> / </span></span><span>Kalshi Lab <span class="brand-divider">/</span> <span class="muted">Research</span></span></div>
-    <span class="badge">Paper only</span>
+    <a class="research-shortcut" href="#research-heading">Research logs</a><span class="badge">Paper only</span>
   </header>
   <main id="main">
     <div class="page-heading"><div><p class="eyebrow">THE PAPER LEDGER</p><h1>A clearer view of the experiment.</h1><p class="lead">Outcomes first. Assumptions in the open. No real money.</p></div><span class="readonly">Read-only dashboard</span></div>
@@ -68,6 +68,20 @@
         <details class="values-disclosure"><summary>Snapshot diagnostics</summary><div id="snapshot-counts"></div></details>
       </section>
     </div>
+    <section id="research" aria-labelledby="research-heading" class="section panel">
+      <div class="section-heading"><div><p class="eyebrow">PUBLIC RESEARCH ARCHIVE</p><h2 id="research-heading" tabindex="-1">Research logs</h2></div><button id="research-load" type="button">Load research logs</button></div>
+      <p class="section-intro">Decisions, estimates and observations, not a claim of edge. News matches are topical associations, not evidence of causation. Research filters do not change portfolio P&amp;L.</p>
+      <div class="research-controls">
+        <label for="research-stream">Research stream<select id="research-stream"><option value="decisions">Decisions</option><option value="forecasts">Forecasts</option><option value="news">News</option><option value="matches">News matches</option><option value="scans">Scans</option></select></label>
+        <label for="research-search">Search this page only<input id="research-search" type="search" autocomplete="off" placeholder="Title, ticker or reason"></label>
+        <label id="research-action-label" for="research-action">Decision action · this page<select id="research-action"><option value="all">All actions</option><option value="entries">Entries</option><option value="rejected">Rejected</option><option value="skipped">Skipped</option><option value="outcomes">Outcomes</option><option value="policy">Policy</option></select></label>
+      </div>
+      <div class="ledger-meta"><p id="research-status" role="status" aria-live="polite">Not loaded. Research loads separately from the portfolio.</p><button id="research-retry" type="button" hidden>Retry research</button></div>
+      <p id="research-range" class="muted"></p>
+      <div class="research-paging"><button id="research-newer" type="button" disabled>Newer page</button><button id="research-older" type="button" disabled>Older page</button><button id="research-csv" type="button" disabled>Download this page view CSV</button></div>
+      <div id="research-list" aria-busy="false"></div>
+      <p class="small muted">Newest records first. Search and action filters apply only to the loaded page; use Older / Newer to access every archived record. Times shown locally.</p>
+    </section>
   </main>
   <footer><span>Kalshi Lab / Independent paper research</span><span>Not investment advice. Not affiliated with Kalshi.</span></footer>
 </body>

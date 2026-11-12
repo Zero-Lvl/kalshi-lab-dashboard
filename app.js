@@ -359,6 +359,168 @@ async function load() {
     retry.hidden = false;
   }
 }
+const RESEARCH_STREAMS = ['decisions', 'forecasts', 'news', 'matches', 'scans'];
+function researchPath(path) {
+  if (typeof path !== 'string' || !/^research\/(?:index|(?:decisions|forecasts|news|matches|scans)-[0-9]{6})\.json$/.test(path)) throw new Error('Invalid research archive path.');
+  return `./${path}`;
+}
+function validateResearchIndex(data) {
+  if (!data || data.schema_version !== 1 || data.ordering !== 'oldest_first' || !Number.isInteger(data.page_size) || data.page_size < 1 || !data.streams || !Number.isFinite(Date.parse(data.generated_at))) throw new Error('Unsupported research index.');
+  for (const stream of RESEARCH_STREAMS) {
+    const entry = data.streams[stream];
+    if (!entry || !Number.isSafeInteger(entry.total) || entry.total < 0 || !Array.isArray(entry.pages)) throw new Error('Incomplete research index.');
+    let total = 0;
+    entry.pages.forEach((page, i) => {
+      if (!page || page.path !== `research/${stream}-${String(i + 1).padStart(6, '0')}.json` || !Number.isSafeInteger(page.count) || page.count < 1 || page.count > data.page_size) throw new Error('Invalid research page descriptor.');
+      researchPath(page.path);
+      total += page.count;
+    });
+    if (total !== entry.total) throw new Error('Research totals do not match pages.');
+  }
+  return data;
+}
+function validateResearchPage(data, stream, page) {
+  if (!data || data.schema_version !== 1 || data.stream !== stream || data.page !== page || !Array.isArray(data.records) || data.records.some(r => !r || typeof r !== 'object' || Array.isArray(r) || !(typeof r.id === 'string' && r.id.trim() || Number.isSafeInteger(r.id)))) throw new Error('Malformed research page.');
+  return data;
+}
+function researchText(value, fallback = 'Unavailable') {
+  return typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean' ? String(value) : fallback;
+}
+function researchAction(value) {
+  const action = researchText(value, '').toLowerCase();
+  if (/^(enter|entry|entered|buy|paper_entry|position_opened)$/.test(action)) return ['entries', 'Paper entry'];
+  if (/reject/.test(action)) return ['rejected', 'Rejected'];
+  if (/skip|abstain/.test(action)) return ['skipped', 'Skipped'];
+  if (/settle|outcome|resolve/.test(action)) return ['outcomes', 'Outcome recorded'];
+  if (/policy|adapt|pause|enable|disable/.test(action)) return ['policy', 'Policy update'];
+  return ['other', researchText(value, 'Action unavailable').replace(/_/g, ' ')];
+}
+function researchFilter(records, filters) {
+  const query = String(filters.search || '').trim().toLowerCase();
+  return records.slice().reverse().filter(r => (!filters.action || filters.action === 'all' || researchAction(r.action)[0] === filters.action) && (!query || ['title', 'ticker', 'event_ticker', 'reason', 'source', 'strategy', 'action', 'id'].some(key => researchText(r[key], '').toLowerCase().includes(query))));
+}
+function researchProbability(value) {
+  const n = number(value);
+  return n !== null && n >= 0 && n <= 1 ? percent(n) : 'Unavailable';
+}
+function researchRecordModel(r, stream) {
+  const label = {decisions: researchAction(r.action)[1], forecasts: 'Forecast estimate', news: 'News observation', matches: 'Topical news match', scans: 'Research scan'}[stream];
+  let note = '';
+  if (stream === 'forecasts') {
+    note = ['yes', 'no'].includes(r.result) ? `Official outcome: ${r.result.toUpperCase()}` : 'Waiting for official outcome.';
+    if (r.paper_position_exists === true) note += ' A paper position exists; this does not mean this forecast caused an entry.';
+    if (r.paper_position_exists === false) note += ' No paper position recorded for this market.';
+  }
+  return {label, title: researchText(r.title, researchText(r.ticker, stream === 'scans' ? 'Scan summary' : label)), reason: researchText(r.reason, stream === 'news' ? 'Source observation; not a trading instruction.' : 'No explanation recorded.'), probability: `Model YES estimate: ${researchProbability(r.p_yes)}`, note};
+}
+function researchCSV(records, stream) {
+  const columns = ['id', 'observed_at', 'ticker', 'title', 'action', 'reason', 'strategy', 'p_yes', 'baseline_p_yes', 'result', 'paper_position_exists', 'published_at', 'source', 'url', 'run_id', 'completed_at', 'mode', 'markets', 'forecasts', 'new_positions', 'articles', 'news_matches', 'feeds_ok', 'abstentions', 'errors'];
+  return [columns.map(csvCell).join(','), ...records.map(r => columns.map(k => csvCell(researchText(r[k], ''))).join(','))].join('\r\n');
+}
+const researchView = {index: null, stream: 'decisions', page: -1, records: [], search: '', action: 'all', request: 0, ready: false};
+function researchLinks(parent, sources) {
+  for (const source of sources) {
+    if (!source || typeof source !== 'object') continue;
+    const href = safeURL(source.url);
+    if (!href) continue;
+    const a = element('a', researchText(source.label, 'Read source (new tab)'));
+    a.href = href; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.referrerPolicy = 'no-referrer';
+    parent.append(a);
+  }
+}
+function renderResearchArchive() {
+  const v = researchView, entry = v.index.streams[v.stream];
+  const rows = researchFilter(v.records, {search:v.search, action:v.stream === 'decisions' ? v.action : 'all'});
+  const list = document.getElementById('research-list'); list.replaceChildren();
+  const newer = entry.pages.slice(v.page + 1).reduce((sum, p) => sum + p.count, 0);
+  text('research-range', entry.total ? `Page ${v.page + 1} of ${entry.pages.length} · newest-first records ${newer + 1}–${newer + v.records.length} of ${entry.total} total · ${rows.length} shown on this page after filters` : `0 records in ${v.stream}`);
+  text('research-status', `Research snapshot ${date(v.index.generated_at)} · page-only filters`);
+  document.getElementById('research-older').disabled = v.page <= 0;
+  document.getElementById('research-newer').disabled = v.page < 0 || v.page >= entry.pages.length - 1;
+  document.getElementById('research-csv').disabled = !rows.length;
+  if (!rows.length) list.append(element('p', entry.total ? 'No records match on this page. Clear filters or browse another page.' : 'No research records in this stream yet.', 'empty-state'));
+  for (const r of rows) {
+    const m = researchRecordModel(r, v.stream), card = element('article', undefined, 'research-card');
+    card.append(element('p', `${m.label} · ${date(r.observed_at)}`, 'research-meta'), element('h3', m.title));
+    if (r.ticker) card.append(element('p', researchText(r.ticker), 'ticker'));
+    if (v.stream === 'scans') card.append(definitionList([['Markets considered', count(r.markets)], ['Forecasts', count(r.forecasts)], ['New paper positions', count(r.new_positions)], ['Articles / matches', `${count(r.articles)} / ${count(r.news_matches)}`], ['Abstentions / errors', `${count(r.abstentions)} / ${count(r.errors)}`]]));
+    else card.append(element('p', m.reason));
+    if (v.stream === 'forecasts' || r.p_yes !== undefined) card.append(element('p', `${m.probability} · experimental, not validated edge.`, 'research-estimate'));
+    if (m.note) card.append(element('p', m.note, 'research-estimate'));
+    const details = element('details'); details.append(element('summary', 'Record details'));
+    const fields = [['Record ID', r.id], ['Run ID', r.run_id], ['Strategy', r.strategy], ['Event ticker', r.event_ticker], ['Category', r.category], ['Model version', r.model_version], ['Source', r.source], ['Article ID', r.article_id], ['Mode', r.mode]];
+    const detailRows = fields.filter(([,value]) => value !== null && value !== undefined).map(([label,value]) => [label,researchText(value)]);
+    if (r.baseline_p_yes !== undefined) detailRows.push(['Baseline YES estimate',researchProbability(r.baseline_p_yes)]);
+    if (r.published_at) detailRows.push(['Published',date(r.published_at)]);
+    if (r.completed_at) detailRows.push(['Completed',date(r.completed_at)]);
+    if (r.settled_at) detailRows.push(['Official settlement',date(r.settled_at)]);
+    if (r.feeds_ok !== undefined) detailRows.push(['Feeds available',count(r.feeds_ok)]);
+    details.append(definitionList(detailRows));
+    const links = element('div', undefined, 'research-sources');
+    researchLinks(links, [{label:'Read source (new tab)',url:r.url}, ...(Array.isArray(r.evidence) ? r.evidence : [])]);
+    if (links.childElementCount) card.append(links);
+    card.append(details); list.append(card);
+  }
+}
+async function researchFetch(path) {
+  const response = await fetch(researchPath(path), {cache:'no-store', credentials:'omit', redirect:'error'});
+  if (!response.ok) throw new Error(`Research file unavailable (${response.status}).`);
+  return response.json();
+}
+async function loadResearch(page = null) {
+  const v = researchView, request = ++v.request, stream = v.stream;
+  v.ready = false; v.records = [];
+  document.getElementById('research-list').replaceChildren();
+  document.getElementById('research-list').setAttribute('aria-busy', 'true');
+  for (const id of ['older','newer','csv']) document.getElementById(`research-${id}`).disabled = true;
+  document.getElementById('research-retry').hidden = true;
+  text('research-range', ''); text('research-status', 'Loading research…');
+  try {
+    const index = validateResearchIndex(await researchFetch('research/index.json'));
+    if (request !== v.request) return;
+    v.index = index;
+    const entry = index.streams[stream], selected = page === null ? entry.pages.length - 1 : page;
+    v.page = selected;
+    let records = [];
+    if (entry.pages.length) {
+      if (!Number.isInteger(selected) || selected < 0 || selected >= entry.pages.length) throw new Error('Invalid research page.');
+      const data = validateResearchPage(await researchFetch(entry.pages[selected].path), stream, selected + 1);
+      if (data.records.length !== entry.pages[selected].count) throw new Error('Research page count mismatch.');
+      records = data.records;
+    }
+    if (request !== v.request) return;
+    v.records = records; v.ready = true;
+    document.getElementById('research-load').hidden = true;
+    renderResearchArchive();
+  } catch (error) {
+    if (request !== v.request) return;
+    text('research-status', `Unable to load research. ${error.message} Portfolio data is unchanged.`);
+    document.getElementById('research-retry').hidden = false;
+  } finally {
+    if (request === v.request) document.getElementById('research-list').setAttribute('aria-busy', 'false');
+  }
+}
+function exportResearchCSV() {
+  if (!researchView.ready) return;
+  const v = researchView;
+  const rows = researchFilter(v.records, {search:v.search,action:v.stream === 'decisions' ? v.action : 'all'});
+  const url = URL.createObjectURL(new Blob(['\uFEFF',researchCSV(rows,v.stream)],{type:'text/csv;charset=utf-8'}));
+  const link = element('a'); link.href=url; link.download=`kalshi-research-${v.stream}-page-${v.page+1}-view.csv`;
+  document.body.append(link); link.click(); link.remove(); setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+function initResearch() {
+  document.getElementById('research-load').addEventListener('click', ()=>loadResearch());
+  document.getElementById('research-retry').addEventListener('click', ()=>loadResearch(researchView.index ? researchView.page : null));
+  document.getElementById('research-stream').addEventListener('change', e=>{
+    researchView.stream=e.target.value; researchView.action='all'; researchView.search='';
+    document.getElementById('research-search').value=''; document.getElementById('research-action').value='all';
+    document.getElementById('research-action-label').hidden=researchView.stream!=='decisions'; loadResearch();
+  });
+  for (const [id,key,event] of [['search','search','input'],['action','action','change']]) document.getElementById(`research-${id}`).addEventListener(event,e=>{researchView[key]=e.target.value;if(researchView.ready)renderResearchArchive();});
+  document.getElementById('research-older').addEventListener('click',()=>loadResearch(researchView.page-1));
+  document.getElementById('research-newer').addEventListener('click',()=>loadResearch(researchView.page+1));
+  document.getElementById('research-csv').addEventListener('click',exportResearchCSV);
+}
 if (typeof document !== 'undefined') {
   document.getElementById('retry').addEventListener('click', load);
   document.getElementById('export-csv').addEventListener('click', exportCSV);
@@ -377,7 +539,8 @@ if (typeof document !== 'undefined') {
     cancelAnimationFrame(resizeFrame);
     resizeFrame = requestAnimationFrame(() => { if (report) renderChart(report); });
   });
+  initResearch();
   load();
   setInterval(() => { if (report && document.getElementById('retry').hidden) freshness(report); }, 60000);
 }
-if (typeof module !== 'undefined') module.exports = { number, validateReport, money, overview, chartModel, chartGeometry, filterPositions, positionStatus, positionModel, safeURL, strategyModel, csvCell, positionsCSV };
+if (typeof module !== 'undefined') module.exports = { number, validateReport, money, overview, chartModel, chartGeometry, filterPositions, positionStatus, positionModel, safeURL, strategyModel, csvCell, positionsCSV, researchPath, validateResearchIndex, validateResearchPage, researchFilter, researchRecordModel, researchCSV, initResearch, loadResearch };

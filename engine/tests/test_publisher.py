@@ -52,6 +52,58 @@ class PublisherTests(unittest.TestCase):
         return self.git(*args)
     def assert_no_push(self):
         self.assertFalse(any(c[3:4]==['push'] for c in self.calls))
+    def archive(self):
+        import hashlib
+        site=self.root/'site';(site/'research').mkdir(exist_ok=True)
+        index={'schema_version':1,'generated_at':'2026-11-11T20:00:00Z','page_size':2,'ordering':'oldest_first',
+               'streams':{s:{'total':0,'pages':[]} for s in ('decisions','forecasts','news','matches','scans')}}
+        page={'schema_version':1,'stream':'news','page':1,
+              'records':[{'id':1,'observed_at':None,'title':'Public article','url':'https://example.com/news'}]}
+        index['streams']['news']={'total':1,'pages':[{'path':'research/news-000001.json','count':1,'first_at':None,'last_at':None}]}
+        for name,value in [('research/index.json',index),('research/news-000001.json',page)]:
+            (site/name).write_text(json.dumps(value))
+        self.remanifest()
+    def remanifest(self):
+        import hashlib
+        rows=[]
+        for path in sorted((self.root/'site').rglob('*')):
+            if path.is_file():
+                body=path.read_bytes();rows.append({'path':path.relative_to(self.root/'site').as_posix(),
+                    'bytes':len(body),'sha256':hashlib.sha256(body).hexdigest()})
+        (self.root/'reports/site-manifest.json').write_text(json.dumps(rows))
+    def test_complete_research_archive_published_with_frozen_research_source(self):
+        self.archive();self.approve(source_publication_approved=True);self.fixture()
+        self.seed_engine(['research.py']);before=self.git('rev-parse','HEAD:engine')
+        result=publisher.publish(self.root,run=self.runner)
+        self.assertEqual(result['status'],'snapshot_pushed')
+        self.assertEqual(self.git('rev-parse','HEAD:engine'),before)
+        self.assertEqual(set(self.git('ls-files').splitlines()),set(PUBLIC_FILES)|
+                         {'research/index.json','research/news-000001.json','engine/research.py'})
+        self.assertEqual((self.work/'research/news-000001.json').read_bytes(),
+                         (self.root/'site/research/news-000001.json').read_bytes())
+    def test_inconsistent_or_private_research_archive_never_uploads(self):
+        self.archive();self.approve();self.fixture()
+        folder=self.root/'site/research'
+        original_index=json.loads((folder/'index.json').read_text())
+        original_page=json.loads((folder/'news-000001.json').read_text())
+        mutations=[
+            lambda i,p:i['streams']['news'].update(total=2),
+            lambda i,p:p['records'].append({'id':2,'observed_at':None}),
+            lambda i,p:p['records'][0].update(password='fixture-private'),
+            lambda i,p:p['records'][0].update(title='/home/alice/private.env'),
+            lambda i,p:p['records'][0].update(url='https://127.0.0.1/private'),
+            lambda i,p:p['records'][0].update(url='https://example.com/?api_key=fixture-private'),
+            lambda i,p:i['streams']['news']['pages'][0].update(path='../private.json'),
+            lambda i,p:i['streams']['news']['pages'][0].update(first_at='/home/alice/private.env'),
+            lambda i,p:i['streams']['news']['pages'][0].update(last_at={'api_key':'fixture-private'}),
+            lambda i,p:p['records'][0].update(title={'api_key':'fixture-private','raw_payload':{'customer':'Alice'}})]
+        for n,mutate in enumerate(mutations):
+            with self.subTest(case=n):
+                index=json.loads(json.dumps(original_index));page=json.loads(json.dumps(original_page));mutate(index,page)
+                (folder/'index.json').write_text(json.dumps(index));(folder/'news-000001.json').write_text(json.dumps(page))
+                self.remanifest();self.calls.clear()
+                with self.assertRaises(ValueError):publisher.publish(self.root,run=self.runner)
+                self.assert_no_push()
     def test_unapproved_publication_makes_no_external_calls(self):
         with self.assertRaises(ValueError):publisher.publish(self.root,run=lambda c:self.calls.append(c))
         self.assertEqual(self.calls,[])
