@@ -1,0 +1,11 @@
+__pycache__/
+*.py[cod]
+data/
+backups/
+site/
+.pages-repo/
+.release-approval.json
+reports/
+*.lock
+.env
+.venv/

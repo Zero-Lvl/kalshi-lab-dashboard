@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+  <meta name="color-scheme" content="dark">
+  <meta name="description" content="Read-only paper trading research. Actual outcomes, transparent uncertainty, no live orders.">
+  <title>Kalshi Lab · Paper research</title>
+  <link rel="stylesheet" href="./styles.css">
+  <script src="./app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to dashboard</a>
+  <header class="site-header">
+    <div class="brand"><span class="brand-mark" aria-hidden="true">k<span> / </span></span><span>Kalshi Lab <span class="brand-divider">/</span> <span class="muted">Research</span></span></div>
+    <span class="badge">Paper only</span>
+  </header>
+  <main id="main">
+    <div class="page-heading"><div><p class="eyebrow">THE PAPER LEDGER</p><h1>A clearer view of the experiment.</h1><p class="lead">Outcomes first. Assumptions in the open. No real money.</p></div><span class="readonly">Read-only dashboard</span></div>
+    <div class="status-bar"><p id="load-status" role="status" aria-live="polite">Loading paper ledger…</p><button id="retry" type="button" hidden>Retry loading</button></div>
+    <noscript><p class="notice">JavaScript is needed to read the ledger. Nothing is submitted or traded from this page.</p></noscript>
+    <div id="dashboard" hidden aria-busy="true">
+      <div class="data-meta"><p id="as-of"></p><p id="observed-at"></p></div>
+      <div id="warnings" class="notices" aria-label="Data warnings"></div>
+      <section aria-labelledby="overview-heading" class="section">
+        <div class="section-heading"><h2 id="overview-heading">Portfolio overview</h2><p id="portfolio-counts" class="small muted"></p></div>
+        <div class="metrics">
+          <article class="metric metric-primary"><p class="metric-label">Total P&amp;L <span class="small">/ mark-to-market</span></p><p id="metric-total" class="metric-value">—</p><p id="unknown-count" class="metric-note"></p></article>
+          <article class="metric"><p class="metric-label">Realized P&amp;L</p><p id="metric-realized" class="metric-value">—</p><p class="metric-note">Settled outcomes, net of entry fees</p></article>
+          <article class="metric"><p class="metric-label">Open P&amp;L</p><p id="metric-open" class="metric-value">—</p><p class="metric-note">Unrealized · not a payout</p></article>
+          <article class="metric"><p class="metric-label">Available cash</p><p id="metric-cash" class="metric-value">—</p><p id="bankroll" class="metric-note"></p></article>
+          <article class="metric"><p class="metric-label">Cost at risk</p><p id="metric-risk" class="metric-value">—</p><p class="metric-note">Capital committed to open positions</p></article>
+        </div>
+      </section>
+      <section aria-labelledby="performance-heading" class="section panel performance">
+        <div class="section-heading"><div><p class="eyebrow">OBSERVED, NOT SIMULATED</p><h2 id="performance-heading">Performance over time</h2></div><div class="segmented" role="group" aria-label="Chart metric"><button type="button" data-metric="realized_pnl" aria-pressed="true">Realized</button><button type="button" data-metric="total_pnl" aria-pressed="false">Total</button></div></div>
+        <div class="chart-toolbar"><div><p id="chart-current" class="chart-current">—</p><p id="chart-metric-label" class="small muted">Realized P&amp;L · USD</p></div><div class="segmented" role="group" aria-label="Chart time window"><button type="button" data-window="24h" aria-pressed="true">24h</button><button type="button" data-window="7d" aria-pressed="false">7d</button><button type="button" data-window="1m" aria-pressed="false">1m</button><button type="button" data-window="3m" aria-pressed="false">3m</button></div></div>
+        <div id="performance-chart" class="chart" aria-describedby="chart-summary chart-inception"></div>
+        <div class="chart-dates"><span id="chart-start"></span><span id="chart-end"></span></div>
+        <p id="chart-summary" class="small chart-note" aria-live="polite"></p>
+        <p id="chart-inception" class="small muted"></p>
+        <details class="values-disclosure"><summary>View observed values</summary><div class="table-wrap"><table><caption id="chart-table-caption">Observed performance values</caption><thead><tr><th scope="col">Observed time</th><th scope="col">P&amp;L (USD)</th></tr></thead><tbody id="chart-values"></tbody></table></div></details>
+      </section>
+      <section aria-labelledby="calendar-heading" class="section">
+        <div class="section-heading"><h2 id="calendar-heading">Calendar tallies</h2><p class="small muted">Calendar periods from the ledger · not rolling windows</p></div>
+        <div id="calendar-tallies" class="calendar-grid"></div>
+      </section>
+      <section aria-labelledby="positions-heading" class="section">
+        <div class="section-heading"><div><p class="eyebrow">EVERY ENTRY, ACCOUNTED FOR</p><h2 id="positions-heading">Position ledger</h2></div><button id="export-csv" type="button" class="export-button">Export view CSV</button></div>
+        <div class="position-controls panel">
+          <div class="segmented status-tabs" role="group" aria-label="Position status"><button type="button" data-status="all" aria-pressed="true">All</button><button type="button" data-status="open" aria-pressed="false">Open</button><button type="button" data-status="won" aria-pressed="false">Won</button><button type="button" data-status="lost" aria-pressed="false">Lost</button><button type="button" data-status="unresolved" aria-pressed="false">Unresolved</button></div>
+          <div class="filter-grid"><label for="position-search">Search positions<input id="position-search" type="search" placeholder="Title or ticker" autocomplete="off"></label><label for="category-filter">Category<select id="category-filter"><option value="all">All categories</option><option value="Weather">Weather</option><option value="Technology">Technology</option><option value="Politics">Politics</option><option value="Economics">Economics</option><option value="Crypto">Crypto</option><option value="Other">Other</option></select></label><label for="position-sort">Sort by<select id="position-sort"><option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="cost">Highest cost first</option></select></label></div>
+        </div>
+        <div class="ledger-meta"><p id="visible-count" role="status" aria-live="polite" class="small muted"></p><p class="small muted">Filters change this list only. Portfolio totals stay unchanged.</p></div>
+        <div id="positions-list" class="positions-list"></div>
+      </section>
+      <section aria-labelledby="strategy-heading" class="section panel">
+        <div class="section-heading"><div><p class="eyebrow">RESEARCH, NOT A CLAIM OF EDGE</p><h2 id="strategy-heading">Strategy performance</h2></div><span class="badge">Experimental / unvalidated</span></div>
+        <p class="section-intro">Small samples are not evidence of a durable edge. Compare model and baseline Brier scores only on settled events; lower is better, but neither score proves profitability.</p>
+        <div id="strategies-list" class="strategy-grid"></div>
+        <div id="adaptation-note" class="adaptation-note"><h3>Adaptation &amp; controls</h3><p>States shown above are recorded by the research engine. This page cannot change adaptation states, enable a strategy, or place a trade. Paused, disabled, shadow, and exploratory states are not live trading permissions.</p></div>
+      </section>
+      <section aria-labelledby="coverage-heading" class="section">
+        <div class="section-heading"><h2 id="coverage-heading">Coverage &amp; exploration</h2><span class="small muted">Counterfactual exploration ≠ real edge</span></div>
+        <p class="section-intro">Coverage and exploration describe what the scanner considered, not positions entered or profits earned. Counterfactual candidates are not actual trades and do not demonstrate validated edge.</p>
+        <div id="coverage-list" class="coverage-grid"></div>
+        <details class="values-disclosure"><summary>Snapshot diagnostics</summary><div id="snapshot-counts"></div></details>
+      </section>
+    </div>
+  </main>
+  <footer><span>Kalshi Lab / Independent paper research</span><span>Not investment advice. Not affiliated with Kalshi.</span></footer>
+</body>
+</html>
