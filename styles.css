@@ -1,3 +1,21 @@
+.market-nav { display: flex; gap: 8px; flex-wrap: wrap; }
+.market-nav a { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 8px 20px; border: 1px solid var(--line); border-radius: 8px; text-decoration: none; }
+.market-nav a[aria-current="page"] { background: #303648; color: #e0e1ff; border-color: var(--accent); }
+#forex { padding-bottom: 32px; overflow-wrap: anywhere; }
+#forex .eyebrow { color: #c5c6ff; font-size: 15px; letter-spacing: .08em; }
+#forex .section { margin-top: 28px; }
+#forex .values-disclosure { padding: 0 16px 16px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; }
+#forex summary { font-size: 18px; min-height: 48px; padding: 14px 0; }
+#forex dt { font-size: 16px; }
+#forex dd { font-size: 20px; }
+#forex .notice, #forex .status-bar { font-size: 18px; }
+#forex-status[data-state="stale"], #forex-status[data-state="error"], #forex .fx-stale { color: #e1c89e; }
+#forex .fx-stale { margin-top: 16px; border-color: #776348; }
+#forex .fx-source { display: inline-flex; align-items: center; min-height: 44px; padding: 8px 0; }
+.fx-fields { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; margin: 24px 0; }
+.fx-fields > div { min-width: 0; }
+.fx-record { border-top: 1px solid var(--line); padding: 16px 0; }
+@media (max-width: 640px) { .market-nav { order: 3; width: 100%; } .market-nav a { flex: 1; } .fx-fields { grid-template-columns: 1fr; gap: 20px; } #forex .status-bar { align-items: flex-start; flex-direction: column; } }
 .research-shortcut { min-height: 44px; display: inline-flex; align-items: center; font-size: 15px; }
 .research-controls { display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 20px; }
 .research-controls label { display: flex; flex-direction: column; gap: 8px; color: var(--muted); font-size: 15px; min-width: 0; }

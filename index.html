@@ -9,14 +9,17 @@
   <title>Kalshi Lab · Paper research</title>
   <link rel="stylesheet" href="./styles.css">
   <script src="./app.js" defer></script>
+  <script src="./forex.js" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to dashboard</a>
   <header class="site-header">
     <div class="brand"><span class="brand-mark" aria-hidden="true">k<span> / </span></span><span>Kalshi Lab <span class="brand-divider">/</span> <span class="muted">Research</span></span></div>
+    <nav class="market-nav" aria-label="Market research"><a id="nav-kalshi" href="#kalshi-panel" aria-controls="kalshi-panel" aria-current="page">Kalshi</a><a id="nav-forex" href="#forex" aria-controls="forex" aria-current="false">Forex</a></nav>
     <a class="research-shortcut" href="#research-heading">Research logs</a><span class="badge">Paper only</span>
   </header>
   <main id="main">
+    <div id="kalshi-panel">
     <div class="page-heading"><div><p class="eyebrow">THE PAPER LEDGER</p><h1>A clearer view of the experiment.</h1><p class="lead">Outcomes first. Assumptions in the open. No real money.</p></div><span class="readonly">Read-only dashboard</span></div>
     <div class="status-bar"><p id="load-status" role="status" aria-live="polite">Loading paper ledger…</p><button id="retry" type="button" hidden>Retry loading</button></div>
     <noscript><p class="notice">JavaScript is needed to read the ledger. Nothing is submitted or traded from this page.</p></noscript>
@@ -81,6 +84,14 @@
       <div class="research-paging"><button id="research-newer" type="button" disabled>Newer page</button><button id="research-older" type="button" disabled>Older page</button><button id="research-csv" type="button" disabled>Download this page view CSV</button></div>
       <div id="research-list" aria-busy="false"></div>
       <p class="small muted">Newest records first. Search and action filters apply only to the loaded page; use Older / Newer to access every archived record. Times shown locally.</p>
+    </section>
+    </div>
+    <section id="forex" aria-labelledby="forex-heading" hidden>
+      <div class="page-heading"><div><p class="eyebrow">FOREX PAPER TRADING MODE</p><h1 id="forex-heading">Forex research</h1><p class="lead">Independent $100 initial simulated account. No shared Kalshi funds. No live orders.</p></div></div>
+      <p class="notice">Read-only simulation. Waiting for secure practice configuration until verified data is available. No invented prices, trades, or returns. This page cannot start or stop the engine; emergency stop is a local CLI operation on the host, not a browser control.</p>
+      <p class="small muted">Generation times over 15 minutes old are flagged as stale; unknown or future timestamps are unverified. Snapshot freshness is not proof of current market-data health. Reopening Forex or selecting refresh fetches a new read-only snapshot. All Forex timestamps are UTC.</p>
+      <div class="status-bar"><p id="forex-status" role="status" aria-live="polite">Forex data loads when selected.</p><button id="forex-retry" type="button" hidden>Refresh / retry Forex data</button></div>
+      <div id="forex-content" aria-busy="false"></div>
     </section>
   </main>
   <footer><span>Kalshi Lab / Independent paper research</span><span>Not investment advice. Not affiliated with Kalshi.</span></footer>
