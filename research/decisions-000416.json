@@ -1,0 +1,1 @@
+{"page":416,"records":[{"action":"rejected","category":"Economics","event_ticker":"KXCPI-26NOV","id":41501,"observed_at":"2026-11-27T01:07:51.163801+00:00","reason":"quote age, liquidity, fee, margin or sizing criteria failed","run_id":396,"strategy":"consensus-control-economics","ticker":"KXCPI-26NOV-T-0.2"}],"schema_version":1,"stream":"decisions"}
